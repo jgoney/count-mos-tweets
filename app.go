@@ -79,13 +79,19 @@ func indexPage(c *gin.Context) {
 func mostLikedTweet(tweets []Tweet) string {
 	liked := byLikes(tweets)
 	sort.Sort(liked)
-	return liked[len(liked)-1].Id
+	if len(liked) > 0 {
+		return liked[len(liked)-1].Id
+	}
+	return ""
 }
 
 func mostRepliedTweet(tweets []Tweet) string {
 	replied := byReplies(tweets)
 	sort.Sort(replied)
-	return replied[len(replied)-1].Id
+	if len(replied) > 0 {
+		return replied[len(replied)-1].Id
+	}
+	return ""
 }
 
 func getTweets(c *gin.Context) {
@@ -174,6 +180,13 @@ func getTweets(c *gin.Context) {
 
 func main() {
 	router := gin.New()
+
+	// Serve client and related assets
+	router.Static("/css", "./dist/css")
+	router.Static("/js", "./dist/js")
+	router.Static("/img", "./dist/img")
+
+	router.StaticFile("/favicon.ico", "./dist/favicon.ico")
 
 	router.LoadHTMLGlob("dist/index.html")
 

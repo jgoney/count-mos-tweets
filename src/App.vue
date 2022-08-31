@@ -48,6 +48,9 @@
         >, Mo tweeted <span class="tweet-count">{{ tweetCount }}</span> time(s).
       </p>
     </b-row>
+    <b-row v-else class="mt-3">
+      <p size="lg">No Tweets retrieved, possible error. :-(</p>
+    </b-row>
     <b-row>
       <b-col v-if="mostLiked">
         <a target="_blank" :href="mostLikedURL">Mo's most liked Tweet...</a>
