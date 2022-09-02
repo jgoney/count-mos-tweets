@@ -186,7 +186,10 @@ func main() {
 	router.Static("/js", "./dist/js")
 	router.Static("/img", "./dist/img")
 
-	router.StaticFile("/favicon.ico", "./dist/favicon.ico")
+	router.StaticFile("/apple-touch-icon.png", "./dist/apple-touch-icon.png")
+	router.StaticFile("/favicon-32x32.png", "./dist/favicon-32x32.png")
+	router.StaticFile("/favicon-16x16.png", "./dist/favicon-16x16.png")
+	router.StaticFile("/site.webmanifest", "./dist/site.webmanifest")
 
 	router.LoadHTMLGlob("dist/index.html")
 
