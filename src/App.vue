@@ -1,70 +1,88 @@
 <template>
   <b-container>
-    <b-row>
-      <h1 class="py-3">Let's Count Mo's Tweets</h1>
+    <b-row class="grey py-4 px-3">
+      <b-row>
+        <b-col>
+          <label for="start-date" class="bold">Gather Tweets from...</label>
+          <b-form-datepicker
+            id="start-date"
+            v-model="startDate"
+            class="mb-2"
+          ></b-form-datepicker>
+          <b-form-timepicker
+            v-model="startTime"
+            locale="en"
+          ></b-form-timepicker>
+        </b-col>
+        <b-col>
+          <label for="end-date" class="bold">...until</label>
+          <b-form-datepicker
+            id="end-date"
+            v-model="endDate"
+            class="mb-2"
+          ></b-form-datepicker>
+          <b-form-timepicker v-model="endTime" locale="en"></b-form-timepicker>
+        </b-col>
+      </b-row>
+      <b-row>
+        <b-col>
+          <b-button
+            @click="getTweets"
+            :disabled="loading"
+            size="lg"
+            class="mt-3"
+            :variant="loading ? 'secondary' : 'primary'"
+            >{{ loading ? 'Loading...' : 'Fetch Tweet totals' }}</b-button
+          >
+          <div v-if="debug">
+            <p v-for="tweet in tweets" :key="tweet.id">{{ tweet.text }}</p>
+            <p>{{ this.tweetCount }}</p>
+            <p>{{ this.tweets.length }}</p>
+            <p>{{ this.tweets.length === this.tweetCount }}</p>
+          </div>
+        </b-col>
+      </b-row>
     </b-row>
-    <b-row>
-      <b-col>
-        <label for="example-datepicker">Gather Tweets from...</label>
-        <b-form-datepicker
-          id="start-date"
-          v-model="startDate"
-          class="mb-2"
-        ></b-form-datepicker>
-        <b-form-timepicker v-model="startTime" locale="en"></b-form-timepicker>
-      </b-col>
-      <b-col>
-        <label for="example-datepicker">...until</label>
-        <b-form-datepicker
-          id="end-date"
-          v-model="endDate"
-          class="mb-2"
-        ></b-form-datepicker>
-        <b-form-timepicker v-model="endTime" locale="en"></b-form-timepicker>
-      </b-col>
+
+    <b-row v-if="tweetCount" class="p-5 text-center">
+      <TweetCount
+        :start="startDatetimeFriendly"
+        :end="endDatetimeFriendly"
+        :times="tweetCount"
+      ></TweetCount>
     </b-row>
-    <b-row>
-      <b-col>
-        <b-button
-          @click="getTweets"
-          :disabled="loading"
-          size="lg"
-          class="mt-3"
-          :variant="loading ? 'secondary' : 'primary'"
-          >{{ loading ? 'Loading...' : 'Fetch Tweet totals' }}</b-button
-        >
-        <div v-if="debug">
-          <p v-for="tweet in tweets" :key="tweet.id">{{ tweet.text }}</p>
-          <p>{{ this.tweetCount }}</p>
-          <p>{{ this.tweets.length }}</p>
-          <p>{{ this.tweets.length === this.tweetCount }}</p>
-        </div>
-      </b-col>
+    <b-row v-if="errorText" class="p-5">
+      <p>{{ errorText }}</p>
     </b-row>
-    <b-row v-if="tweetCount" class="mt-3">
-      <p size="lg">
-        From <strong>{{ startDatetimeFriendly }}</strong> to
-        <strong>{{ endDatetimeFriendly }}</strong
-        >, Mo tweeted <span class="tweet-count">{{ tweetCount }}</span> time(s).
-      </p>
-    </b-row>
-    <b-row v-else class="mt-3">
-      <p size="lg">No Tweets retrieved, possible error. :-(</p>
-    </b-row>
-    <b-row>
+    <b-row class="grey py-4 px-3" align-h="between">
       <b-col v-if="mostLiked">
         <a target="_blank" :href="mostLikedURL">Mo's most liked Tweet...</a>
-        <blockquote class="twitter-tweet">
-          <a :href="mostLikedURL"></a>
-        </blockquote>
+        <Tweet :tweetURL="mostLikedURL"></Tweet>
       </b-col>
       <b-col v-if="mostReplied">
         <a target="_blank" :href="mostRepliedURL"
           >Mo's most talked about Tweet...</a
         >
-        <blockquote class="twitter-tweet">
-          <a :href="mostRepliedURL"></a>
-        </blockquote>
+        <Tweet :tweetURL="mostRepliedURL"></Tweet>
+      </b-col>
+    </b-row>
+    <b-row v-if="tweets.length" class="py-5">
+      <b-col class="p-0">
+        <h4>Mo's tweets in detail...</h4>
+        <b-table striped hover :fields="tableFields" :items="tweetTable">
+          <!-- A virtual column -->
+          <template #cell(index)="data">
+            {{ data.index + 1 }}
+          </template>
+
+          <template #cell(id)="data">
+            <a
+              target="_blank"
+              :href="'https://twitter.com/x/status/' + data.item.id"
+              >{{ data.item.id }}</a
+            >
+          </template>
+        </b-table>
       </b-col>
     </b-row>
   </b-container>
@@ -80,8 +98,15 @@ dayjs.extend(localizedFormat);
 
 import TwitterWidgetsLoader from 'twitter-widgets';
 
+import Tweet from '@/components/Tweet';
+import TweetCount from '@/components/TweetCount';
+
 export default {
   name: 'App',
+  components: {
+    Tweet,
+    TweetCount,
+  },
   data() {
     return {
       startDate: '',
@@ -94,6 +119,17 @@ export default {
       mostLiked: '',
       mostReplied: '',
       debug: false,
+      errorText: '',
+      tableFields: [
+        // A virtual column that doesn't exist in items
+        'index',
+        { key: 'id', sortable: true },
+        { key: 'text', sortable: true },
+        { key: 'retweet_count', sortable: true },
+        { key: 'reply_count', sortable: true },
+        { key: 'like_count', sortable: true },
+        { key: 'quote_count', sortable: true },
+      ],
     };
   },
   computed: {
@@ -123,10 +159,23 @@ export default {
     mostLikedURL() {
       return 'https://twitter.com/x/status/' + this.mostLiked;
     },
+    tweetTable() {
+      return this.tweets.map((tweet) => {
+        return {
+          id: tweet.id,
+          text: tweet.text,
+          retweet_count: tweet.public_metrics.retweet_count,
+          reply_count: tweet.public_metrics.reply_count,
+          like_count: tweet.public_metrics.like_count,
+          quote_count: tweet.public_metrics.quote_count,
+        };
+      });
+    },
   },
   methods: {
     async getTweets() {
       this.loading = true;
+      this.errorText = '';
 
       const response = await fetch(
         '/api/tweets?' +
@@ -142,6 +191,10 @@ export default {
 
       this.mostLiked = json.most_liked;
       this.mostReplied = json.most_replied;
+
+      if (this.tweets.length === 0) {
+        this.errorText = 'No Tweets retrieved, possible error. :-(';
+      }
 
       this.loading = false;
     },
@@ -161,9 +214,16 @@ export default {
 };
 </script>
 
-<style>
-.tweet-count {
-  color: red;
-  font-weight: bold;
+<style scoped>
+a {
+  color: black;
+}
+
+.grey {
+  background-color: rgb(242, 242, 242);
+}
+
+.bold {
+  font-weight: bolder;
 }
 </style>
